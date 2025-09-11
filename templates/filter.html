@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <title>Filtriranje hotela</title>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        #map { height: 600px; width: 100%; margin-top: 20px; }
+    </style>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+</head>
+<body>
+    <h2>Filtriraj hotele</h2>
+
+<label for="rating">Broj zvjezdica:</label>
+<select id="rating">
+    <option value="">Sve ocjene</option>
+    <option value="1">1 ★</option>
+    <option value="2">2 ★</option>
+    <option value="3">3 ★</option>
+    <option value="4">4 ★</option>
+    <option value="5">5 ★</option>
+</select>
+
+<label for="county">Županija:</label>
+<select id="county">
+    <option value="">Sve županije</option>
+    {% for county in counties %}
+        <option value="{{ county }}">{{ county }}</option>
+    {% endfor %}
+</select>
+
+<button onclick="filterHotels()">Prikaži hotele</button>
+
+<hr>
+
+<div id="map" style="height: 600px;"></div>
+
+
+
+    <script>
+
+    const map = L.map("map").setView([45.1, 15.2], 6);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+
+    let markerCluster = L.markerClusterGroup();
+    map.addLayer(markerCluster);
+
+    function filterHotels() {
+        const rating = document.getElementById("rating").value;
+        const county = document.getElementById("county").value;
+
+        const url = new URL("/api/hotels", window.location.origin);
+        if (rating) url.searchParams.append("rating", rating);
+        if (county) url.searchParams.append("county", county);
+
+        fetch(url)
+            .then(res => res.json())
+            .then(hotels => {
+                markerCluster.clearLayers();
+
+                if (hotels.length === 0) {
+                    alert("Nema hotela za prikaz.");
+                    return;
+                }
+
+                hotels.forEach(hotel => {
+                    if (hotel.Map) {
+                        const [lat, lng] = hotel.Map.split("|").map(parseFloat);
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            const marker = L.marker([lat, lng])
+                                .bindPopup(`<b>${hotel.HotelName}</b><br>${hotel.Address}`);
+                            markerCluster.addLayer(marker);
+                        }
+                    }
+                });
+
+                const group = new L.featureGroup(markerCluster.getLayers());
+                map.fitBounds(group.getBounds().pad(0.2));
+            })
+            .catch(err => {
+                console.error("Greška:", err);
+                alert("Greška prilikom dohvaćanja hotela.");
+            });
+    }
+</script>
+
+</body>
+</html>

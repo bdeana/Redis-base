@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <title>Traži hotele po gradu/državi</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #sidebar {
+            position: fixed;
+            top: 0;
+            right: -250px;
+            width: 250px;
+            height: 100%;
+            background-color: #f8f9fa;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            padding: 1rem;
+            transition: right 0.3s ease;
+            z-index: 1050;
+        }
+        #sidebar ul li {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        #sidebar ul li:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        body { font-family: Arial, sans-serif; margin: 0px; }
+        h1 { text-align: center; }
+        form { text-align: center; margin-bottom: 30px; }
+        input[type="text"] {
+            padding: 8px;
+            font-size: 16px;
+            width: 250px;
+        }
+        input[type="submit"] {
+            padding: 8px 16px;
+            font-size: 16px;
+        }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-primary px-4 d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center">
+        <a href="/dashboard" class="d-flex align-items-center text-decoration-none text-white">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/b/b7/Flag_of_Europe.svg"
+                 alt="EU Stars" style="width: 30px; height: 20px; margin-right: 8px;">
+            <span class="fw-bold fs-4 text-white">EuroZzzone</span>
+        </a>
+    </div>
+    <div>
+        <button id="userMenuBtn" class="btn btn-outline-light d-flex align-items-center">
+            <i class="bi bi-person-circle fs-4"></i>
+            <span class="ms-2">{{ user_email.split('@')[0] }}</span>
+        </button>
+    </div>
+</nav>
+
+<div id="sidebar">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Izbornik</h5>
+        <button id="closeSidebarBtn" class="btn btn-sm btn-outline-secondary">&times;</button>
+    </div>
+    <ul class="list-unstyled">
+        <li><a href="/user_account" class="text-decoration-none">Korisnički račun</a></li>
+        <li><a href="/favorites" class="text-decoration-none">Favoriti</a></li>
+        <li><a href="/top_hotels" class="text-decoration-none">Najpoželjniji hoteli</a></li>
+        <li><a href="/logout" class="text-decoration-none">Odjava</a></li>
+    </ul>
+</div>
+
+<h1>Traži hotele po gradu</h1>
+
+<form method="get" action="/hoteli" class="d-flex justify-content-center mb-4">
+    <div class="input-group" style="width: 250px;">
+        <span class="input-group-text" id="search-icon">
+            <i class="bi bi-search"></i>
+        </span>
+        <input type="text" name="location" placeholder="Pretraži"
+               value="{{ location }}"
+               class="form-control search-input">
+    </div>
+</form>
+
+{% if hotels %}
+    <div class="container mt-4" style="max-width: 900px;">
+        <table class="table table-hover table-striped table-bordered rounded">
+            <thead class="table-primary">
+                <tr>
+                    <th>Naziv hotela</th>
+                    <th>Grad</th>
+                    <th>Država</th>
+                    <th>Ocjena</th>
+                    <th>Adresa</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for hotel in hotels %}
+                <tr>
+                    <td><a href="/hotel/{{ hotel.HotelCode }}" class="text-decoration-none fw-bold">
+                            {{ hotel.HotelName }}
+                        </a>
+                    </td>
+                    <td>{{ hotel.cityName }}</td>
+                    <td>{{ hotel.countyName }}</td>
+                    <td>{{ hotel.HotelRating }}</td>
+                    <td>{{ hotel.Address }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+
+    {% if hotels %}
+        <div class="text-center mb-2">
+            Prikazano hotela: {{ start_num }} - {{ end_num }} od ukupno {{ total_hotels }}
+            <br>
+            Stranica: {{ (offset // limit) + 1 }}
+        </div>
+    {% endif %}
+
+    <div class="d-flex justify-content-center mt-4">
+    <nav>
+        <ul class="pagination">
+            {% if offset >= limit %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('prikaz_hotela', location=location, offset=offset-limit) }}">« Prethodna</a>
+            </li>
+            {% endif %}
+            
+            {% if offset + limit < total_hotels %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('prikaz_hotela', location=location, offset=offset+limit) }}">Sljedeća »</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% elif location %}
+    <p style="text-align:center;">Nema hotela pronađenih za grad: <strong>{{ location }}</strong></p>
+{% endif %}
+
+
+<script>
+    const userMenuBtn = document.getElementById('userMenuBtn');
+    const sidebar = document.getElementById('sidebar');
+    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+    userMenuBtn.addEventListener('click', () => {
+        sidebar.style.right = (sidebar.style.right === '0px') ? '-250px' : '0px';
+    });
+    closeSidebarBtn.addEventListener('click', () => {
+        sidebar.style.right = '-250px';
+    });
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <title>HotelMatch Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        #map { height: 400px; width: 100%; }
+        #sidebar ul li {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        #sidebar ul li:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+    </style>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary px-4 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+    
+            <div class="d-flex align-items-center">
+                <a href="/dashboard" class="d-flex align-items-center text-decoration-none text-white">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b7/Flag_of_Europe.svg"
+     alt="EU Stars" style="width: 50px; height: 30px; margin-right: 8px;">
+    <span class="fw-bold fs-4 text-white">EuroZzzone</span>
+                </a>
+</div>
+
+        </div>
+        <div>
+    
+            <button id="userMenuBtn" class="btn btn-outline-light d-flex align-items-center">
+    <i class="bi bi-person-circle fs-4"></i>
+    <span class="ms-2">{{ user_email }}</span>
+</button>
+        </div>
+    </nav>
+
+    <div id="sidebar" style="position: fixed; top: 0; right: -250px; width: 250px; height: 100%; background-color: #f8f9fa; box-shadow: -2px 0 5px rgba(0,0,0,0.1); padding: 1rem; transition: right 0.3s ease; z-index: 1050;">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Izbornik</h5>
+            <button id="closeSidebarBtn" class="btn btn-sm btn-outline-secondary">&times;</button>
+        </div>
+        <ul class="list-unstyled">
+            <li><a href="/user_account" class="text-decoration-none">Korisnički račun</a></li>
+            <li><a href="/favorites" class="text-decoration-none">Favoriti</a></li>
+            <li><a href="/top_hotels" class="text-decoration-none">Najpoželjniji hoteli</a></li>
+            <li><a href="/logout" class="text-decoration-none">Odjava</a></li>
+        </ul>
+    </div>
+
+<div class="container mt-4">
+    <h1>Korisnički račun</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} mt-2">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    
+    <div id="read-only" {% if not user_data %}style="display:none"{% endif %}>
+        <p><strong>Ime:</strong> {{ user_data.first_name if user_data else "" }}</p>
+        <p><strong>Prezime:</strong> {{ user_data.last_name if user_data else "" }}</p>
+        <p><strong>Telefon:</strong> {{ user_data.phone if user_data else "" }}</p>
+        <p><strong>Adresa:</strong> {{ user_data.address if user_data else "" }}</p>
+        <button class="btn btn-primary" id="edit-btn">Uredi</button>
+    </div>
+
+    
+    <div id="edit-form" {% if user_data %}style="display:none"{% endif %}>
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">Ime</label>
+                <input type="text" name="first_name" class="form-control" value="{{ user_data.first_name if user_data else '' }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Prezime</label>
+                <input type="text" name="last_name" class="form-control" value="{{ user_data.last_name if user_data else '' }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Telefon</label>
+                <input type="text" name="phone" class="form-control" value="{{ user_data.phone if user_data else '' }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Adresa</label>
+                <input type="text" name="address" class="form-control" value="{{ user_data.address if user_data else '' }}">
+            </div>
+            <button type="submit" class="btn btn-success">Spremi</button>
+            <button type="button" class="btn btn-secondary" id="cancel-btn">Odustani</button>
+        </form>
+    </div>
+</div></body>
+
+<script>
+
+    const userMenuBtn = document.getElementById('userMenuBtn');
+    const sidebar = document.getElementById('sidebar');
+    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+    userMenuBtn.addEventListener('click', () => {
+        sidebar.style.right = (sidebar.style.right === '0px') ? '-250px' : '0px';
+    });
+
+    closeSidebarBtn.addEventListener('click', () => {
+        sidebar.style.right = '-250px';
+    });
+    document.getElementById("edit-btn")?.addEventListener("click", () => {
+    document.getElementById("read-only").style.display = "none";
+    document.getElementById("edit-form").style.display = "block";
+});
+
+document.getElementById("cancel-btn")?.addEventListener("click", () => {
+    document.getElementById("edit-form").style.display = "none";
+    document.getElementById("read-only").style.display = "block";
+});
+
+
+    setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            alert.style.transition = "opacity 0.5s";
+            alert.style.opacity = 0;
+            setTimeout(() => alert.remove(), 500);
+        });
+    }, 3000); 
+</script>

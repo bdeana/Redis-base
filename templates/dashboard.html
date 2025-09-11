@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <title>EuroZzzone Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        #map { height: 400px; width: 100%; }
+
+        #sidebar ul li {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        #sidebar ul li:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary px-4 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center">
+                <a href="/dashboard" class="d-flex align-items-center text-decoration-none text-white">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b7/Flag_of_Europe.svg"
+     alt="EU Stars" style="width: 50px; height: 30px; margin-right: 8px;">
+    <span class="fw-bold fs-4 text-white">EuroZzzone</span>
+                </a>
+</div>
+
+        </div>
+<div class="d-flex justify-content-end mb-3">
+        <form method="get" action="/hoteli" class="position-relative">
+            <input type="text" name="location" class="form-control form-control-sm ps-5"
+                   placeholder="Pretraži grad..." value="{{ location }}" style="width: 220px;">
+            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+        </form>
+    </div>
+        <div>
+            <button id="userMenuBtn" class="btn btn-outline-light d-flex align-items-center">
+    <i class="bi bi-person-circle fs-4"></i>
+    <span class="ms-2">{{ user_email }}</span>
+</button>
+        </div>
+    </nav>
+
+    <div id="sidebar" style="position: fixed; top: 0; right: -250px; width: 250px; height: 100%; background-color: #f8f9fa; box-shadow: -2px 0 5px rgba(0,0,0,0.1); padding: 1rem; transition: right 0.3s ease; z-index: 1050;">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Izbornik</h5>
+            <button id="closeSidebarBtn" class="btn btn-sm btn-outline-secondary">&times;</button>
+        </div>
+        <ul class="list-unstyled">
+            <li><a href="/user_account" class="text-decoration-none">Korisnički račun</a></li>
+            <li><a href="/favorites" class="text-decoration-none">Favoriti</a></li>
+            <li><a href="/top_hotels" class="text-decoration-none">Najpoželjniji hoteli</a></li>
+            <li><a href="/logout" class="text-decoration-none">Odjava</a></li>
+        </ul>
+    </div>
+
+    <div class="container mt-4">
+        
+        <h1 class="mb-4 text-center">Dobrodošao na EuroZzzone Dashboard!</h1>
+
+        <div class="mb-4">
+            <h4>Filtriraj hotele</h4>
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label for="rating" class="form-label">Broj zvjezdica:</label>
+                    <select id="rating" class="form-select">
+                        <option value="">Sve ocjene</option>
+                        <option value="1">1 ★</option>
+                        <option value="2">2 ★</option>
+                        <option value="3">3 ★</option>
+                        <option value="4">4 ★</option>
+                        <option value="5">5 ★</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="county" class="form-label">Država:</label>
+                    <select id="county" class="form-select">
+                        <option value="">Sve države</option>
+                        {% for z in zupanije %}
+                            <option value="{{ z.countyName }}">{{ z.countyName }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button onclick="filterHotels()" class="btn btn-primary w-100">Prikaži hotele</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <h4>Karta hotela</h4>
+            <div id="map"></div>
+        </div>
+
+        <div class="row">
+    <div class="col-md-6">
+        <h4>Hoteli po državi</h4>
+        <canvas id="hotelsByCountyChart"></canvas>
+    </div>
+
+    <div class="col-md-6">
+        <h4>Prosječna ocjena po državi</h4>
+        <canvas id="avgRatingChart"></canvas>
+    </div>
+
+    <div class="col-md-12 mt-5 mb-5 d-flex justify-content-center">
+    <div style="max-width: 500px; width: 100%;">
+        <h4 class="text-center mb-4">Broj hotela po zvjezdicama</h4>
+        <canvas id="starsChart" style="max-height:400px;"></canvas>
+    </div>
+</div>
+</div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+    <script>
+        function isInEurope(lat, lon) {
+            return lat >= 35 && lat <= 72 && lon >= -25 && lon <= 45;
+        }
+
+        const map = L.map('map').setView([45.1, 15.2], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 18
+        }).addTo(map);
+
+        let hotels = [
+            {% for hotel in hotels %}
+                {% if hotel.Map and '|' in hotel.Map %}
+                    {
+                        name: {{ hotel.HotelName|tojson }},
+                        address: {{ hotel.Address|tojson }},
+                        lat: parseFloat("{{ hotel.Map.split('|')[0] }}"),
+                        lon: parseFloat("{{ hotel.Map.split('|')[1] }}"),
+                        code: {{ hotel.HotelCode|tojson }}
+                    },
+                {% endif %}
+            {% endfor %}
+        ];
+
+        const markers = L.markerClusterGroup();
+
+        hotels.forEach(hotel => {
+            if (!isNaN(hotel.lat) && !isNaN(hotel.lon) && isInEurope(hotel.lat, hotel.lon)) {
+                const marker = L.marker([hotel.lat, hotel.lon]);
+                marker.bindPopup(`<b><a href="/hotel/${encodeURIComponent(hotel.code)}" target="_blank">${hotel.name}</a></b><br>${hotel.address}`);
+                markers.addLayer(marker);
+            }
+        });
+
+        map.addLayer(markers);
+
+        function filterHotels() {
+            const rating = document.getElementById("rating").value;
+            const county = document.getElementById("county").value;
+
+            const url = new URL("/api/hotels", window.location.origin);
+            if (rating) url.searchParams.append("rating", rating);
+            if (county) url.searchParams.append("county", county);
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    markers.clearLayers();
+                    data.forEach(hotel => {
+                        if (hotel.Map) {
+                            const [lat, lon] = hotel.Map.split("|").map(parseFloat);
+                            if (!isNaN(lat) && !isNaN(lon) && isInEurope(lat, lon)) {
+                                const marker = L.marker([lat, lon]);
+                                marker.bindPopup(`<b><a href="/hotel/${encodeURIComponent(hotel.HotelCode)}" target="_blank">${hotel.HotelName}</a></b><br>${hotel.Address}`);
+                                markers.addLayer(marker);
+                            }
+                        }
+                    });
+                    if (markers.getLayers().length > 0) {
+                        map.fitBounds(markers.getBounds().pad(0.2));
+                    }
+                })
+                .catch(err => {
+                    console.error("Greška:", err);
+                    alert("Greška prilikom filtriranja.");
+                });
+        }
+    </script>
+
+    <script>
+        const userMenuBtn = document.getElementById('userMenuBtn');
+        const sidebar = document.getElementById('sidebar');
+        const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+        userMenuBtn.addEventListener('click', () => {
+            if (sidebar.style.right === '0px') {
+                sidebar.style.right = '-250px';
+            } else {
+                sidebar.style.right = '0px';
+            }
+        });
+        closeSidebarBtn.addEventListener('click', () => {
+            sidebar.style.right = '-250px';
+        });
+    </script>
+
+    <script>
+
+    const ctxCounty = document.getElementById('hotelsByCountyChart').getContext('2d');
+    new Chart(ctxCounty, {
+        type: 'bar',
+        data: {
+            labels: [{% for z in zupanije %}"{{ z.countyName }}",{% endfor %}],
+            datasets: [{
+                label: 'Broj hotela',
+                data: [{% for z in zupanije %}{{ z.broj }},{% endfor %}],
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: { responsive: true }
+    });
+
+    const ctxRating = document.getElementById('avgRatingChart').getContext('2d');
+    new Chart(ctxRating, {
+        type: 'line',
+        data: {
+            labels: [{% for o in ocjene %}"{{ o.countyName }}",{% endfor %}],
+            datasets: [{
+                label: 'Prosječna ocjena',
+                data: [{% for o in ocjene %}{% if o.prosjek is not none %}{{ "%.2f"|format(o.prosjek) }},{% else %}0,{% endif %}{% endfor %}],
+                backgroundColor: 'rgba(255, 206, 86, 0.6)',
+                borderColor: 'rgba(255, 206, 86, 1)',
+                fill: false,
+                tension: 0.3
+            }]
+        },
+        options: { responsive: true }
+    });
+
+    const ctxStars = document.getElementById('starsChart').getContext('2d');
+    new Chart(ctxStars, {
+        type: 'pie',
+        data: {
+            labels: [{% for z in zvjezdice %}"{{ z.HotelRating }} ⭐",{% endfor %}],
+            datasets: [{
+                data: [{% for z in zvjezdice %}{{ z.broj }},{% endfor %}],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.6)',
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(255, 206, 86, 0.6)',
+                    'rgba(75, 192, 192, 0.6)',
+                    'rgba(153, 102, 255, 0.6)',
+                    'rgba(152, 9, 9, 1)',
+                ]
+            }]
+        },
+        options: { responsive: true }
+    });
+</script>
+
+</body>
+</html>

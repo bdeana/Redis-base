@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ hotel.HotelName }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+
+    <style>
+        #map { height: 400px; width: 100%; margin-top: 20px; }
+
+        #sidebar {
+            position: fixed;
+            top: 0;
+            right: -250px;
+            width: 250px;
+            height: 100%;
+            background-color: #f8f9fa;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            padding: 1rem;
+            transition: right 0.3s ease;
+            z-index: 1050;
+        }
+        #sidebar ul li {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        #sidebar ul li:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        #toast {
+            position: fixed;
+            top: 10%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1100;
+            display: none;
+            padding: 20px 40px;
+            color: #fff;
+            background-color: #4fc3f7; /* svijetlo plava */
+            font-size: 1.2rem;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark bg-primary px-4 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <a href="/dashboard" class="d-flex align-items-center text-decoration-none text-white">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/b/b7/Flag_of_Europe.svg"
+                 alt="EU Stars" style="width: 30px; height: 20px; margin-right: 8px;">
+            <span class="fw-bold fs-4 text-white">EuroZzzone</span>
+            </a>
+        </div>
+        <div>
+            <button id="userMenuBtn" class="btn btn-outline-light d-flex align-items-center">
+                <i class="bi bi-person-circle fs-4"></i>
+                <span class="ms-2">{{ user_email.split('@')[0] }}</span>
+            </button>
+        </div>
+    </nav>
+
+
+    <div id="sidebar">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Izbornik</h5>
+            <button id="closeSidebarBtn" class="btn btn-sm btn-outline-secondary">&times;</button>
+        </div>
+        <ul class="list-unstyled">
+            <li><a href="/user_account" class="text-decoration-none">Korisnički račun</a></li>
+            <li><a href="/favorites" class="text-decoration-none">Favoriti</a></li>
+            <li><a href="/top_hotels" class="text-decoration-none">Najpoželjniji hoteli</a></li>
+            <li><a href="/logout" class="text-decoration-none">Odjava</a></li>
+        </ul>
+    </div>
+
+    <div class="container mt-4">
+        <h1>{{ hotel.HotelName }}
+            <i id="favoriteIcon" class="bi bi-heart ms-2" style="cursor: pointer; font-size: 1.5rem;"></i>
+        </h1>
+        <p><strong>Adresa:</strong> {{ hotel.Address }}</p>
+        <p><strong>Opis:</strong> {{ hotel.Description or 'Nema opisa.' }}</p>
+        <p><strong>Pogodnosti:</strong> {{ hotel.HotelFacilities or 'Nema podataka.' }}</p>
+
+        <h3>Kontakt:</h3>
+        <ul>
+            <li><strong>Telefon:</strong> {{ hotel.PhoneNumber or 'N/A' }}</li>
+            <li><strong>Fax:</strong> {{ hotel.FaxNumber or 'N/A' }}</li>
+            <li><strong>Web:</strong>
+                {% if hotel.HotelWebsiteUrl %}
+                    <a href="{{ hotel.HotelWebsiteUrl }}" target="_blank">{{ hotel.HotelWebsiteUrl }}</a>
+                {% else %}
+                    Nema web stranice.
+                {% endif %}
+            </li>
+        </ul>
+
+        <div id="map"></div>
+    </div>
+
+    <div id="toast"></div>
+
+
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([0, 0], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+        }).addTo(map);
+
+        {% if hotel.Map and '|' in hotel.Map %}
+            const parts = "{{ hotel.Map }}".split("|");
+            const lat = parseFloat(parts[0]);
+            const lon = parseFloat(parts[1]);
+
+            if (!isNaN(lat) && !isNaN(lon)) {
+                const marker = L.marker([lat, lon]).addTo(map);
+                marker.bindPopup("{{ hotel.HotelName|e }}").openPopup();
+                map.setView([lat, lon], 15);
+            }
+        {% else %}
+            document.getElementById('map').innerHTML = "<p>Lokacija nije dostupna.</p>";
+        {% endif %}
+    </script>
+
+    <script>
+        const userMenuBtn = document.getElementById('userMenuBtn');
+        const sidebar = document.getElementById('sidebar');
+        const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+        userMenuBtn.addEventListener('click', () => {
+            sidebar.style.right = (sidebar.style.right === '0px') ? '-250px' : '0px';
+        });
+
+        closeSidebarBtn.addEventListener('click', () => {
+            sidebar.style.right = '-250px';
+        });
+    </script>
+
+    <script>
+        const favIcon = document.getElementById('favoriteIcon');
+        const hotelCode = "{{ hotel.HotelCode }}";
+        const toast = document.getElementById('toast');
+
+        function showToast(message) {
+            toast.innerText = message;
+            toast.style.opacity = 1;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.opacity = 0;
+                setTimeout(() => toast.style.display = 'none', 500);
+            }, 2000);
+        }
+
+        fetch(`/is_favorite/${hotelCode}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.favorite) {
+                    favIcon.classList.remove('bi-heart');
+                    favIcon.classList.add('bi-heart-fill');
+                    favIcon.style.color = 'red';
+                }
+            });
+
+        favIcon.addEventListener('click', () => {
+            if (favIcon.classList.contains('bi-heart')) {
+                fetch(`/add_favorite/${hotelCode}`, { method: "POST" })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            favIcon.classList.remove('bi-heart');
+                            favIcon.classList.add('bi-heart-fill');
+                            favIcon.style.color = 'red';
+                            showToast("Dodano u favorite");
+                        }
+                    });
+            } else {
+                fetch(`/remove_favorite/${hotelCode}`, { method: "POST" })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            favIcon.classList.remove('bi-heart-fill');
+                            favIcon.classList.add('bi-heart');
+                            favIcon.style.color = '';
+                            showToast("Uklonjeno iz favorita");
+                        }
+                    });
+            }
+        });
+    </script>
+</body>
+</html>

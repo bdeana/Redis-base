@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <title>Favoriti</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #sidebar {
+            position: fixed;
+            top: 0;
+            right: -250px;
+            width: 250px;
+            height: 100%;
+            background-color: #f8f9fa;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            padding: 1rem;
+            transition: right 0.3s ease;
+            z-index: 1050;
+        }
+        #sidebar ul li {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        #sidebar ul li:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-primary px-4 d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center">
+        <a href="/dashboard" class="d-flex align-items-center text-decoration-none text-white">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/b/b7/Flag_of_Europe.svg"
+                 alt="EU Stars" style="width: 30px; height: 20px; margin-right: 8px;">
+            <span class="fw-bold fs-4 text-white">EuroZzzone</span>
+        </a>
+    </div>
+    <div>
+        <button id="userMenuBtn" class="btn btn-outline-light d-flex align-items-center">
+            <i class="bi bi-person-circle fs-4"></i>
+            <span class="ms-2">{{ user_email.split('@')[0] }}</span>
+        </button>
+    </div>
+</nav>
+
+<div id="sidebar">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Izbornik</h5>
+        <button id="closeSidebarBtn" class="btn btn-sm btn-outline-secondary">&times;</button>
+    </div>
+    <ul class="list-unstyled">
+        <li><a href="/user_account" class="text-decoration-none">Korisnički račun</a></li>
+        <li><a href="/favorites" class="text-decoration-none">Favoriti</a></li>
+        <li><a href="/top_hotels" class="text-decoration-none">Najpoželjniji hoteli</a></li>
+        <li><a href="/logout" class="text-decoration-none">Odjava</a></li>
+    </ul>
+</div>
+
+<div class="container mt-4">
+    <h1>Moji favoriti</h1>
+    
+    {% if hotels %}
+    <ul class="list-group">
+    {% for h in hotels %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+                <a href="/hotel/{{ h.HotelCode }}" class="text-decoration-none fw-bold">
+                    {{ h.HotelName }}
+                </a>
+                <small class="text-muted d-block">
+                    {{ h.Address }} ({{ h.HotelRating or 'N/A' }})
+                </small>
+            </div>
+            <button class="btn btn-sm btn-outline-danger remove-fav" data-hotel="{{ h.HotelCode }}">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </li>
+    {% endfor %}
+    </ul>
+
+    <button id="openMapModal" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#mapModal">
+        Prikaži na karti
+    </button>
+
+    <div class="modal fade" id="mapModal" tabindex="-1" aria-labelledby="mapModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="mapModalLabel">Favoriti na karti</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zatvori"></button>
+          </div>
+          <div class="modal-body" style="height: 600px; padding:0;">
+            <div id="mapModalDiv" style="height: 100%; width: 100%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <p>Nemate spremljenih favorita.</p>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+    const userMenuBtn = document.getElementById('userMenuBtn');
+    const sidebar = document.getElementById('sidebar');
+    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+    userMenuBtn.addEventListener('click', () => {
+        sidebar.style.right = (sidebar.style.right === '0px') ? '-250px' : '0px';
+    });
+    closeSidebarBtn.addEventListener('click', () => {
+        sidebar.style.right = '-250px';
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll(".remove-fav").forEach(btn => {
+            btn.addEventListener("click", function() {
+                const hotelCode = this.dataset.hotel;
+                fetch(`/remove_favorite/${hotelCode}`, { method: "POST" })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.closest("li").remove();
+                        } else {
+                            alert(data.message || "Greška pri uklanjanju.");
+                        }
+                    })
+                    .catch(err => console.error(err));
+            });
+        });
+    });
+
+    let mapInitialized = false;
+    const hotels = {{ hotels | tojson }};
+    const mapModal = document.getElementById('mapModal');
+
+    mapModal.addEventListener('shown.bs.modal', function () {
+        if (!mapInitialized) {
+            const map = L.map('mapModalDiv').setView([45.815, 15.9819], 6);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            hotels.forEach(hotel => {
+                if (hotel.Map) {
+                    const coords = hotel.Map.split("|").map(Number);
+                    if (coords.length === 2) {
+                        L.marker(coords)
+                          .addTo(map)
+                          .bindPopup(`<b>${hotel.HotelName}</b><br>${hotel.Address}`);
+                    }
+                }
+            });
+
+            mapInitialized = true;
+        }
+    });
+</script>
+
+</body>
+</html>

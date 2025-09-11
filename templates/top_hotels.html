@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <title>Najpoželjniji hoteli</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        #sidebar {
+            position: fixed;
+            top: 0;
+            right: -250px;
+            width: 250px;
+            height: 100%;
+            background-color: #f8f9fa;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            padding: 1rem;
+            transition: right 0.3s ease;
+            z-index: 1050;
+        }
+        #sidebar ul li {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        #sidebar ul li:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .favorite-btn {
+            cursor: pointer;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary px-4 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <a href="/dashboard" class="d-flex align-items-center text-decoration-none text-white">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/b/b7/Flag_of_Europe.svg"
+                 alt="EU Stars" style="width: 30px; height: 20px; margin-right: 8px;">
+            <span class="fw-bold fs-4 text-white">EuroZzzone</span>
+            </a>
+        </div>
+        <div>
+            <button id="userMenuBtn" class="btn btn-outline-light d-flex align-items-center">
+                <i class="bi bi-person-circle fs-4"></i>
+                <span class="ms-2">{{ user_email }}</span>
+            </button>
+        </div>
+    </nav>
+
+    <div id="sidebar">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Izbornik</h5>
+            <button id="closeSidebarBtn" class="btn btn-sm btn-outline-secondary">&times;</button>
+        </div>
+        <ul class="list-unstyled">
+            <li><a href="/user_account" class="text-decoration-none">Korisnički račun</a></li>
+            <li><a href="/favorites" class="text-decoration-none">Favoriti</a></li>
+            <li><a href="/top_hotels" class="text-decoration-none">Najpoželjniji hoteli</a></li>
+            <li><a href="/logout" class="text-decoration-none">Odjava</a></li>
+        </ul>
+    </div>
+
+    <div class="container mt-4">
+        <h1>Najpoželjniji hoteli</h1>
+        <ul class="list-group mt-3">
+    {% for hotel in hotels %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+            <a href="/hotel/{{ hotel.HotelCode }}" class="text-decoration-none fw-bold">
+                {{ hotel.HotelName }}
+            </a><br>
+            <small>{{ hotel.Address }}</small>
+        </div>
+
+        <div class="d-flex align-items-center">
+            <span class="me-2">{{ hotel.favorite_count }}</span>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+
+    </div>
+
+    <script>
+document.addEventListener("DOMContentLoaded", () => {
+    const hearts = document.querySelectorAll('i[data-hotel-code]');
+
+    hearts.forEach(heart => {
+        heart.addEventListener('click', () => {
+            const hotelCode = heart.getAttribute('data-hotel-code');
+            const isFavorite = heart.classList.contains('bi-heart-fill');
+
+            if (!isFavorite) {
+                // Dodaj u favorite
+                fetch(`/add_favorite/${hotelCode}`, { method: "POST" })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            heart.classList.remove('bi-heart');
+                            heart.classList.add('bi-heart-fill');
+                            heart.style.color = 'red';
+                        }
+                    });
+            } else {
+                // Ukloni iz favorita
+                fetch(`/remove_favorite/${hotelCode}`, { method: "POST" })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            heart.classList.remove('bi-heart-fill');
+                            heart.classList.add('bi-heart');
+                            heart.style.color = 'black';
+                        }
+                    });
+            }
+        });
+    });
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    const sidebar = document.getElementById("sidebar");
+    const userMenuBtn = document.getElementById("userMenuBtn");
+    const closeSidebarBtn = document.getElementById("closeSidebarBtn");
+
+    userMenuBtn.addEventListener("click", () => {
+        sidebar.style.right = "0";
+    });
+
+    closeSidebarBtn.addEventListener("click", () => {
+        sidebar.style.right = "-250px";
+    });
+
+    const hearts = document.querySelectorAll('i[data-hotel-code]');
+    hearts.forEach(heart => {
+        heart.addEventListener('click', () => {
+            const hotelCode = heart.getAttribute('data-hotel-code');
+            const isFavorite = heart.classList.contains('bi-heart-fill');
+
+            if (!isFavorite) {
+                fetch(`/add_favorite/${hotelCode}`, { method: "POST" })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            heart.classList.remove('bi-heart');
+                            heart.classList.add('bi-heart-fill');
+                            heart.style.color = 'red';
+                        }
+                    });
+            } else {
+                fetch(`/remove_favorite/${hotelCode}`, { method: "POST" })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            heart.classList.remove('bi-heart-fill');
+                            heart.classList.add('bi-heart');
+                            heart.style.color = 'black';
+                        }
+                    });
+            }
+        });
+    });
+});
+
+</script>
+
+</body>
+</html>

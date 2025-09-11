@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <title>Statistika hotela</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        canvas { margin-bottom: 40px; }
+    </style>
+</head>
+<body>
+    <h1>Statistika hotela</h1>
+
+    <h2>Broj hotela po državi</h2>
+    <canvas id="zupanijeChart" width="600" height="300"></canvas>
+
+    <h2>Prosječna ocjena po državi</h2>
+    <canvas id="ocjeneChart" width="600" height="300"></canvas>
+
+    <h2>Broj hotela po zvjezdicama</h2>
+    <canvas id="zvjezdiceChart" width="600" height="300"></canvas>
+
+    <script>
+        const zupanijeChart = new Chart(document.getElementById('zupanijeChart'), {
+            type: 'bar',
+            data: {
+                labels: {{ zupanije | map(attribute='countyName') | list | tojson }},
+                datasets: [{
+                    label: 'Broj hotela',
+                    data: {{ zupanije | map(attribute='broj') | list | tojson }},
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        const ocjeneChart = new Chart(document.getElementById('ocjeneChart'), {
+            type: 'bar',
+            data: {
+                labels: {{ ocjene | map(attribute='cityName') | list | tojson }},
+                datasets: [{
+                    label: 'Prosječna ocjena',
+                    data: {{ ocjene | map(attribute='prosjek') | list | tojson }},
+                    backgroundColor: 'rgba(153, 102, 255, 0.6)'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true, max: 5 }
+                }
+            }
+        });
+
+        const zvjezdiceChart = new Chart(document.getElementById('zvjezdiceChart'), {
+            type: 'pie',
+            data: {
+                labels: {{ zvjezdice | map(attribute='HotelRating') | list | tojson }},
+                datasets: [{
+                    data: {{ zvjezdice | map(attribute='broj') | list | tojson }},
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(75, 192, 192, 0.6)',
+                        'rgba(153, 102, 255, 0.6)',
+                        'rgba(255, 159, 64, 0.6)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true
+            }
+        });
+    </script>
+</body>
+</html>
