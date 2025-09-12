@@ -21,20 +21,11 @@ Prije pokretanja aplikacije, potrebno je
 - pip install mysql-connector-python
 
 - instalirati MySQL (https://dev.mysql.com/downloads/)
-
-
-- [Python 3.9+](https://www.python.org/downloads/)  
-- [MySQL](https://dev.mysql.com/downloads/)  
-- [Redis](https://redis.io/download)  
-
-Također, kreirati MySQL bazu podataka **hotelmatch** i potrebne tablice (`users`, `hotels`, `favorites`, `user_profiles`) dostupne u create.sql.
+- kreirati tablice (primjer tablica nalazi se u create.sql)
 
 ---
 
 ## 🚀 Pokretanje projekta
 
 1. Kloniraj repozitorij:
-
-```bash
-git clone https://github.com/tvoje-ime/hotelmatch.git
-cd hotelmatch
+2. Pokrenuti app.py
