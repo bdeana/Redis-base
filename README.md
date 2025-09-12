@@ -15,7 +15,7 @@ Ovo je web aplikacija napravljena pomoću **Flaska** koja omogućava:
 
 Prije pokretanja aplikacije, potrebno je 
 
-- Preuzeti hotel.csv (https://www.kaggle.com/datasets/raj713335/tbo-hotels-dataset)
+- Preuzeti hotels.csv (https://www.kaggle.com/datasets/raj713335/tbo-hotels-dataset)
 - pip install flask
 - pip install redis
 - pip install mysql-connector-python
