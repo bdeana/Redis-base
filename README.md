@@ -27,5 +27,5 @@ Prije pokretanja aplikacije, potrebno je
 
 ## 🚀 Pokretanje projekta
 
-1. Kloniraj repozitorij:
+1. Kloniraj repozitorij
 2. Pokrenuti app.py
