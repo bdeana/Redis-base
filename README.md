@@ -22,6 +22,11 @@ Prije pokretanja aplikacije, potrebno je
 
 - instalirati MySQL (https://dev.mysql.com/downloads/)
 - kreirati tablice (primjer tablica nalazi se u create.sql)
+- u datoteku .env dodati svoje podatke za:
+       DB_HOST=localhost
+       DB_USER=root
+       DB_PASSWORD= "svoju lozinku"  
+       DB_NAME= "naziv baze"
 
 ---
 
