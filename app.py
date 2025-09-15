@@ -3,18 +3,21 @@ import redis
 import mysql.connector
 import time
 import json
+from dotenv import load_dotenv
+import os
 
 app = Flask(__name__)
 app.secret_key = 'tvoj_tajni_ključ'
 
 r = redis.Redis(host='localhost', port=6379, db=0)
+load_dotenv()
 
 def get_db_connection():
     return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="dbubanj",
-        database="hotelmatch"
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME")
     )
 
 @app.route('/')
@@ -597,3 +600,4 @@ def user_account():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
